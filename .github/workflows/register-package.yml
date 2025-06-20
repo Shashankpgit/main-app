@@ -1,38 +1,47 @@
-name: Build and Release Function Package
+name: Register Function Package
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:  # Run manually for now
 
 jobs:
-  release:
+  register:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
 
-    - name: Create dist directory
-      run: mkdir dist
-
-    - name: Copy source code to dist
-      run: cp -r src dist/
-
-    - name: Create dist.tar.gz
-      run: tar -czvf dist.tar.gz dist/
-
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: dist.tar.gz
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Trigger main-app registration
+    - name: Download Release Asset from function-lib
       run: |
-        echo "🚀 Triggering main-app repo via repository_dispatch..."
-        curl -X POST https://api.github.com/repos/Shashankpgit/main-app/dispatches \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
-          -d '{"event_type": "function-package-released"}'
+        echo "Fetching latest release..."
+        curl -s -H "Accept: application/vnd.github+json" \
+             -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+             https://api.github.com/repos/Shashankpgit/function-lib/releases/latest > release.json
+
+        echo "🔍 Printing release metadata:"
+        cat release.json
+
+        echo "🔎 Extracting asset URL..."
+        asset_url=$(jq -r '.assets[] | select(.name=="dist.tar.gz") | .url' release.json)
+
+        if [ -z "$asset_url" ]; then
+          echo "❌ dist.tar.gz not found in the latest release"
+          exit 1
+        fi
+
+        echo "✅ Found asset URL: $asset_url"
+
+        echo "⬇️ Downloading dist.tar.gz..."
+        curl -L -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+             -H "Accept: application/octet-stream" \
+             -o dist.tar.gz "$asset_url"
+
+    - name: Verify Downloaded File
+      run: ls -lh dist.tar.gz
+
+    - name: Call Register API (dummy for now)
+      run: |
+        echo "📞 Calling Register API..."
+        curl -X POST https://httpbin.org/post \
+             -H "Content-Type: application/json" \
+             -d '{"version": "latest", "source": "main-app"}'
