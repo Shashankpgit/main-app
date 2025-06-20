@@ -14,7 +14,7 @@ jobs:
         curl -L \
           -H "Accept: application/octet-stream" \
           -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
-          https://api.github.com/repos/YOUR_USERNAME/function-lib/releases/latest/assets \
+          https://api.github.com/repos/shashankpgit/function-lib/releases/latest/assets \
           | jq -r '.[] | select(.name=="dist.tar.gz") | .url' \
           | xargs -I {} curl -L -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" -H "Accept: application/octet-stream" -o dist.tar.gz {}
 
