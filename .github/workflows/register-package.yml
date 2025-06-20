@@ -1,7 +1,7 @@
-name: Debug Register Flow
+name: Register Function Package
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Run manually for now
 
 jobs:
   register:
@@ -13,25 +13,35 @@ jobs:
 
     - name: Download Release Asset from function-lib
       run: |
-        echo "Fetching asset URL..."
+        echo "Fetching latest release..."
         curl -s -H "Accept: application/vnd.github+json" \
-          -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
-          https://api.github.com/repos/Shashankpgit/function-lib/releases/latest/assets > assets.json
+             -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+             https://api.github.com/repos/Shashankpgit/function-lib/releases/latest > release.json
 
-        cat assets.json  # Print the API response
+        echo "🔍 Printing release metadata:"
+        cat release.json
 
-        asset_url=$(cat assets.json | jq -r '.[] | select(.name=="dist.tar.gz") | .url')
-        echo "Asset URL: $asset_url"
+        echo "🔎 Extracting asset URL..."
+        asset_url=$(jq -r '.assets[] | select(.name=="dist.tar.gz") | .url' release.json)
 
+        if [ -z "$asset_url" ]; then
+          echo "❌ dist.tar.gz not found in the latest release"
+          exit 1
+        fi
+
+        echo "✅ Found asset URL: $asset_url"
+
+        echo "⬇️ Downloading dist.tar.gz..."
         curl -L -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
              -H "Accept: application/octet-stream" \
              -o dist.tar.gz "$asset_url"
 
-    - name: List downloaded file
+    - name: Verify Downloaded File
       run: ls -lh dist.tar.gz
 
-    - name: Call dummy Register API
+    - name: Call Register API (dummy for now)
       run: |
+        echo "📞 Calling Register API..."
         curl -X POST https://httpbin.org/post \
              -H "Content-Type: application/json" \
-             -d '{"version": "v1.0.2", "source": "main-app"}'
+             -d '{"version": "latest", "source": "main-app"}'
