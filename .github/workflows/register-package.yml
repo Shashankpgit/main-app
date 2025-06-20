@@ -1,0 +1,29 @@
+name: Register Function Package
+
+on:
+  workflow_dispatch:  # for now, we run it manually
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download Release Asset from function-lib
+      run: |
+        echo "Downloading latest release asset from function-lib..."
+        curl -L \
+          -H "Accept: application/octet-stream" \
+          -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+          https://api.github.com/repos/YOUR_USERNAME/function-lib/releases/latest/assets \
+          | jq -r '.[] | select(.name=="dist.tar.gz") | .url' \
+          | xargs -I {} curl -L -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" -H "Accept: application/octet-stream" -o dist.tar.gz {}
+
+    - name: Verify Download
+      run: ls -lh dist.tar.gz
+
+    - name: Call Register API
+      run: |
+        echo "Calling Register API..."
+        curl -X POST https://your.api.endpoint/register \
+             -H "Content-Type: application/json" \
+             -d '{"version": "v1.0.2", "source": "main-app"}'
