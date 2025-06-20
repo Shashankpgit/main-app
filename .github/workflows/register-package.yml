@@ -1,29 +1,37 @@
-name: Register Function Package
+name: Debug Register Flow
 
 on:
-  workflow_dispatch:  # for now, we run it manually
+  workflow_dispatch:
 
 jobs:
   register:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+
     - name: Download Release Asset from function-lib
       run: |
-        echo "Downloading latest release asset from function-lib..."
-        curl -L \
-          -H "Accept: application/octet-stream" \
+        echo "Fetching asset URL..."
+        curl -s -H "Accept: application/vnd.github+json" \
           -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
-          https://api.github.com/repos/Shashankpgit/function-lib/releases/latest/assets \
-          | jq -r '.[] | select(.name=="dist.tar.gz") | .url' \
-          | xargs -I {} curl -L -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" -H "Accept: application/octet-stream" -o dist.tar.gz {}
+          https://api.github.com/repos/YOUR_USERNAME/function-lib/releases/latest/assets > assets.json
 
-    - name: Verify Download
+        cat assets.json  # Print the API response
+
+        asset_url=$(cat assets.json | jq -r '.[] | select(.name=="dist.tar.gz") | .url')
+        echo "Asset URL: $asset_url"
+
+        curl -L -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+             -H "Accept: application/octet-stream" \
+             -o dist.tar.gz "$asset_url"
+
+    - name: List downloaded file
       run: ls -lh dist.tar.gz
 
-    - name: Call Register API
+    - name: Call dummy Register API
       run: |
-        echo "Calling Register API..."
-        curl -X POST https://your.api.endpoint/register \
+        curl -X POST https://httpbin.org/post \
              -H "Content-Type: application/json" \
              -d '{"version": "v1.0.2", "source": "main-app"}'
